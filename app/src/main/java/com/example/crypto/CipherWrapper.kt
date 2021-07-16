@@ -1,5 +1,6 @@
 package com.example.crypto
 
+
 import android.util.Base64
 import java.security.Key
 import javax.crypto.Cipher
@@ -65,11 +66,11 @@ class CipherWrapper(val transformation: String) {
      * is an Initialization Vector and `bbbbbb` the  data to decrypt. `false` by default.
      */
     fun decrypt(data: String, key: Key?, useInitializationVector: Boolean = false): String {
-        val encodedString: String
+        var encodedString: String
 
         if (useInitializationVector) {
             val split = data.split(IV_SEPARATOR.toRegex())
-            require(split.size == 2) { "Passed data is incorrect. There was no IV specified with it." }
+            if (split.size != 2) throw IllegalArgumentException("Passed data is incorrect. There was no IV specified with it.")
 
             val ivString = split[0]
             encodedString = split[1]
@@ -103,4 +104,3 @@ class CipherWrapper(val transformation: String) {
         return cipher.unwrap(encryptedKeyData, algorithm, wrappedKeyType)
     }
 }
-

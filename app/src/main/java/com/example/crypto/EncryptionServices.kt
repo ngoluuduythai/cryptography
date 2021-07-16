@@ -25,7 +25,7 @@ class EncryptionServices(context: Context) {
         const val CONFIRM_CREDENTIALS_VALIDATION_DELAY = 120 // Seconds
     }
 
-    private val keyStoreWrapper = KeyStoreWrapper(context, DEFAULT_KEY_STORE_NAME)
+    private val keyStoreWrapper = KeyStoreWrapper(context)
 
     /*
      * Encryption Stage
@@ -39,6 +39,17 @@ class EncryptionServices(context: Context) {
             createAndroidSymmetricKey()
         } else {
             createDefaultSymmetricKey(password ?: "")
+        }
+    }
+
+    /**
+     * Create and save cryptography key, to protect Secrets with.
+     */
+    fun createMasterKeyAsymmetric(password: String? = null) {
+        if (SystemServices.hasMarshmallow()) {
+            createAndroidASymmetricKey()
+        } else {
+            createDefaultASymmetricKey(password ?: "")
         }
     }
 
@@ -61,6 +72,29 @@ class EncryptionServices(context: Context) {
     }
 
     /**
+     * Encrypt user password and Secrets with created master key.
+     */
+    fun encryptAsymmetric(data: String, keyPassword: String? = null): String {
+        return if (SystemServices.hasMarshmallow()) {
+            encryptWithAndroidAsySymmetricKey(data)
+        } else {
+            encryptWithDefaultASymmetricKey(data, keyPassword ?: "")
+        }
+    }
+
+
+    /**
+     * Decrypt user password and Secrets with created master key.
+     */
+    fun decryptAsymmetric(data: String, keyPassword: String? = null): String {
+        return if (SystemServices.hasMarshmallow()) {
+            decryptWithAndroidASymmetricKey(data)
+        } else {
+            decryptWithDefaultASymmetricKey(data, keyPassword ?: "")
+        }
+    }
+
+    /**
      * Decrypt user password and Secrets with created master key.
      */
     fun decrypt(data: String, keyPassword: String? = null): String {
@@ -71,8 +105,14 @@ class EncryptionServices(context: Context) {
         }
     }
 
+
+
     private fun createAndroidSymmetricKey() {
         keyStoreWrapper.createAndroidKeyStoreSymmetricKey(MASTER_KEY)
+    }
+
+    private fun createAndroidASymmetricKey() {
+        keyStoreWrapper.createAndroidKeyStoreAsymmetricKey(MASTER_KEY)
     }
 
     private fun encryptWithAndroidSymmetricKey(data: String): String {
@@ -80,13 +120,27 @@ class EncryptionServices(context: Context) {
         return CipherWrapper(CipherWrapper.TRANSFORMATION_SYMMETRIC).encrypt(data, masterKey, true)
     }
 
+    private fun encryptWithAndroidAsySymmetricKey(data: String): String {
+        val masterKey = keyStoreWrapper.getAndroidKeyStoreAsymmetricKeyPair(MASTER_KEY)
+        return CipherWrapper(CipherWrapper.TRANSFORMATION_ASYMMETRIC).encrypt(data, masterKey?.public)
+    }
+
     private fun decryptWithAndroidSymmetricKey(data: String): String {
         val masterKey = keyStoreWrapper.getAndroidKeyStoreSymmetricKey(MASTER_KEY)
         return CipherWrapper(CipherWrapper.TRANSFORMATION_SYMMETRIC).decrypt(data, masterKey, true)
     }
 
+    private fun decryptWithAndroidASymmetricKey(data: String): String {
+        val masterKey = keyStoreWrapper.getAndroidKeyStoreAsymmetricKeyPair(MASTER_KEY)
+        return CipherWrapper(CipherWrapper.TRANSFORMATION_ASYMMETRIC).decrypt(data, masterKey?.private)
+    }
+
     private fun createDefaultSymmetricKey(password: String) {
         keyStoreWrapper.createDefaultKeyStoreSymmetricKey(MASTER_KEY, password)
+    }
+
+    private fun createDefaultASymmetricKey(password: String) {
+        //keyStoreWrapper.createDefaultKeyStoreASymmetricKey(MASTER_KEY, password)
     }
 
     private fun encryptWithDefaultSymmetricKey(data: String, keyPassword: String): String {
@@ -94,9 +148,19 @@ class EncryptionServices(context: Context) {
         return CipherWrapper(CipherWrapper.TRANSFORMATION_SYMMETRIC).encrypt(data, masterKey, true)
     }
 
-    private fun decryptWithDefaultSymmetricKey(data: String, keyPassword: String): String {
+    private fun encryptWithDefaultASymmetricKey(data: String, keyPassword: String): String {
         val masterKey = keyStoreWrapper.getDefaultKeyStoreSymmetricKey(MASTER_KEY, keyPassword)
-        return masterKey?.let { CipherWrapper(CipherWrapper.TRANSFORMATION_SYMMETRIC).decrypt(data, masterKey, true) } ?: ""
+        return CipherWrapper(CipherWrapper.TRANSFORMATION_ASYMMETRIC).encrypt(data, masterKey, false)
+    }
+
+    private fun decryptWithDefaultSymmetricKey(data: String, keyPassword: String): String {
+        val masterKey = keyStoreWrapper.getAndroidKeyStoreAsymmetricKeyPair(MASTER_KEY)
+        return masterKey?.let { CipherWrapper(CipherWrapper.TRANSFORMATION_SYMMETRIC).decrypt(data, masterKey?.public, true) } ?: ""
+    }
+
+    private fun decryptWithDefaultASymmetricKey(data: String, keyPassword: String): String {
+        val masterKey = keyStoreWrapper.getAndroidKeyStoreAsymmetricKeyPair(MASTER_KEY)
+        return masterKey?.let { CipherWrapper(CipherWrapper.TRANSFORMATION_ASYMMETRIC).decrypt(data, masterKey?.public, false) } ?: ""
     }
 
 

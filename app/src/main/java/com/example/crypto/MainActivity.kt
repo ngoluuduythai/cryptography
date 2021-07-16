@@ -1,10 +1,12 @@
 package com.example.crypto
 
+import android.content.Context
 import android.os.Build
 import android.os.Bundle
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import android.util.Base64.encode
+import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
 import com.example.crypto.crypt.rsa.RSAKeyPairGenerator
 import kotlinx.coroutines.CoroutineScope
@@ -19,37 +21,73 @@ import java.security.PrivateKey
 import java.util.Base64;
 
 class MainActivity : AppCompatActivity() {
+    companion object {
+        val TAG = MainActivity::class.simpleName
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        val keyPair = createAsymmetricKeyPair()
-        println("skey:  ${keyPair.private}")
 
-            val encrypt = encryptWithAndroidASymmetricKey("thai ngo", keyPair)
-            println("encrypt>>>  $encrypt")
-            val decrypt = decryptWithAndroidASymmetricKey(encrypt, keyPair)
-            println("decrypt>>>  $decrypt")
+        val encryptionService = EncryptionServices(applicationContext)
+        encryptionService.createMasterKeyAsymmetric(null)
+
+
+        val encrypt = encryptSecret(applicationContext, "thai ngo")
+        println("encrypt>>>  $encrypt")
+        val decrypt = decryptSecret(applicationContext, encrypt)
+        println("decrypt>>>  $decrypt")
     }
 
-    private  fun encryptWithAndroidASymmetricKey(data: String, keyPair: KeyPair): String  {
-         return   CipherWrapper(CipherWrapper.TRANSFORMATION_ASYMMETRIC).encrypt(
-                data,
-                keyPair.private,
-                true
-            )
+    /**
+     * Encrypt secret before saving it.
+     */
+    fun encryptSecret(applicationContext: Context, secret: String?): String {
+        secret?.let {
+            return try {
+                Log.d(TAG, "encrypt data: $secret")
+                EncryptionServices(applicationContext).encryptAsymmetric(it, null)
+            } catch (e: Exception) {
+                Log.d(TAG, "encrypt is error: ${e.message}")
+                ""
+            }
+        } ?: return ""
     }
 
-    private  fun decryptWithAndroidASymmetricKey(data: String, keyPair: KeyPair): String {
+    /**
+     * Decrypt secret before showing it.
+     */
+    fun decryptSecret(applicationContext: Context, secret: String?): String {
+        secret?.let {
+            return try {
+                Log.d(TAG, "decrypt data is: $secret");
+                EncryptionServices(applicationContext).decryptAsymmetric(it, null)
+            } catch (e: Exception) {
+                Log.d(TAG, "decrypt is error: ${e.message}");
+                ""
+            }
 
-         return   CipherWrapper(CipherWrapper.TRANSFORMATION_ASYMMETRIC).decrypt(
-                data,
-                keyPair.private,
-                true
-            )
+        } ?: return ""
     }
 
 
+    private fun encryptWithAndroidASymmetricKey(data: String, keyPair: KeyPair): String {
+        return CipherWrapper(CipherWrapper.TRANSFORMATION_ASYMMETRIC).encrypt(
+            data,
+            keyPair.private,
+            true
+        )
+    }
+
+    private fun decryptWithAndroidASymmetricKey(data: String, keyPair: KeyPair): String {
+
+        return CipherWrapper(CipherWrapper.TRANSFORMATION_ASYMMETRIC).decrypt(
+            data,
+            keyPair.private,
+            true
+        )
+    }
 
 
     fun createAsymmetricKeyPair(): KeyPair {

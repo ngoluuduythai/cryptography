@@ -3,6 +3,7 @@ package com.example.crypto
 import android.annotation.TargetApi
 import android.content.Context
 import android.os.Build
+import android.os.Build.VERSION_CODES.LOLLIPOP_MR1
 import android.security.KeyPairGeneratorSpec
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
@@ -19,11 +20,14 @@ import javax.security.auth.x500.X500Principal
 /**
  * This class wraps [KeyStore] class apis with some additional possibilities.
  */
-class KeyStoreWrapper(private val context: Context, defaultKeyStoreName: String) {
+class KeyStoreWrapper(private val context: Context) {
+    companion object {
+        private const val DEFAULT_KEYSTORE_NAME = "pin_keystore"
+    }
 
     private val keyStore: KeyStore = createAndroidKeyStore()
 
-    private val defaultKeyStoreFile = File(context.filesDir, defaultKeyStoreName)
+    private val defaultKeyStoreFile = File(context.filesDir, DEFAULT_KEYSTORE_NAME)
     private val defaultKeyStore = createDefaultKeyStore()
 
     /**
@@ -42,6 +46,9 @@ class KeyStoreWrapper(private val context: Context, defaultKeyStoreName: String)
         }
     }
 
+    fun getAliases() : List<String> {
+        return Collections.list(keyStore.aliases())
+    }
     /**
      * @return asymmetric keypair from Android Key Store or null if any key with given alias exists
      */
@@ -61,6 +68,16 @@ class KeyStoreWrapper(private val context: Context, defaultKeyStoreName: String)
      */
     fun removeAndroidKeyStoreKey(alias: String) = keyStore.deleteEntry(alias)
 
+    /**
+     * Clears all aliases in the Android Key Store
+     */
+    fun clear() {
+        val aliases = keyStore.aliases()
+        aliases.iterator().forEach {
+            keyStore.deleteEntry(it)
+        }
+    }
+
     fun createDefaultKeyStoreSymmetricKey(alias: String, password: String) {
         val key = generateDefaultSymmetricKey()
         val keyEntry = KeyStore.SecretKeyEntry(key)
@@ -73,7 +90,7 @@ class KeyStoreWrapper(private val context: Context, defaultKeyStoreName: String)
      * Generates symmetric [KeyProperties.KEY_ALGORITHM_AES] key with default [KeyProperties.BLOCK_MODE_CBC] and
      * [KeyProperties.ENCRYPTION_PADDING_PKCS7] using default provider.
      */
-    fun generateDefaultSymmetricKey(): SecretKey {
+    private fun generateDefaultSymmetricKey(): SecretKey {
         val keyGenerator = KeyGenerator.getInstance("AES")
         return keyGenerator.generateKey()
     }
@@ -111,11 +128,10 @@ class KeyStoreWrapper(private val context: Context, defaultKeyStoreName: String)
      * Creates asymmetric RSA key with default [KeyProperties.BLOCK_MODE_ECB] and
      * [KeyProperties.ENCRYPTION_PADDING_RSA_PKCS1] and saves it to Android Key Store.
      */
-    @TargetApi(Build.VERSION_CODES.M)
     fun createAndroidKeyStoreAsymmetricKey(alias: String): KeyPair {
         val generator = KeyPairGenerator.getInstance("RSA", "AndroidKeyStore")
 
-        if (SystemServices.hasMarshmallow()) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             initGeneratorWithKeyGenParameterSpec(generator, alias)
         } else {
             initGeneratorWithKeyPairGeneratorSpec(generator, alias)
@@ -124,15 +140,17 @@ class KeyStoreWrapper(private val context: Context, defaultKeyStoreName: String)
         return generator.generateKeyPair()
     }
 
+    @TargetApi(LOLLIPOP_MR1)
     private fun initGeneratorWithKeyPairGeneratorSpec(generator: KeyPairGenerator, alias: String) {
         val startDate = Calendar.getInstance()
         val endDate = Calendar.getInstance()
         endDate.add(Calendar.YEAR, 20)
 
+        @Suppress("DEPRECATION")
         val builder = KeyPairGeneratorSpec.Builder(context)
             .setAlias(alias)
             .setSerialNumber(BigInteger.ONE)
-            .setSubject(X500Principal("CN=${alias} CA Certificate"))
+            .setSubject(X500Principal("CN=$alias CA Certificate"))
             .setStartDate(startDate.time)
             .setEndDate(endDate.time)
 
@@ -165,4 +183,3 @@ class KeyStoreWrapper(private val context: Context, defaultKeyStoreName: String)
     }
 
 }
-

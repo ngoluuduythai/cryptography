@@ -1,19 +1,16 @@
 package com.example.crypto
 
-import android.graphics.Bitmap
 import android.os.Build
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
-import com.example.crypto.crypt.rsa.RSAKeyPairGenerator
+import java.io.IOException
+import java.io.StringWriter
 import java.security.KeyPair
 import java.security.KeyPairGenerator
 import java.security.KeyStore
 import java.security.PrivateKey
+import java.security.cert.X509Certificate
 import java.security.interfaces.RSAPublicKey
-import javax.crypto.KeyGenerator
-import javax.crypto.SecretKey
-import kotlinx.coroutines.async
-import kotlinx.coroutines.coroutineScope
 
 
 suspend fun main() {
@@ -37,37 +34,67 @@ suspend fun main() {
 //    println("rasKeyPair>>>  ${rasKeyPair.invoke().public.value.asSequence()}")
 //    println("rasKeyPair>>>  ${rasKeyPair.invoke().private.value}")
 
-    val encrypt = encryptWithAndroidASymmetricKey("thai ngo", keyPair)
-    println("encrypt>>>  $encrypt")
-    val decrypt = decryptWithAndroidASymmetricKey(encrypt, keyPair)
-    println("decrypt>>>  $decrypt")
+//    val encrypt = encryptWithAndroidASymmetricKey("thai ngo", keyPair)
+//    println("encrypt>>>  $encrypt")
+//    val decrypt = decryptWithAndroidASymmetricKey(encrypt, keyPair)
+//    println("decrypt>>>  $decrypt")
+
+
+
+
 
 }
 
 
-private suspend fun encryptWithAndroidASymmetricKey(data: String, keyPair: KeyPair): String = coroutineScope {
-    val encryptRs = async {
-         CipherWrapper(CipherWrapper.TRANSFORMATION_ASYMMETRIC).encrypt(
-            data,
-            keyPair.private,
-            true
-        )
-    }
+/**
+ * Returns the Certificate as a PEM encoded String.
+ *
+ * @param certificate - X.509 Certificate.
+ * @return PEM Encoded Certificate String.
+ * @throws SCMSecurityException - On failure to create a PEM String.
+ */
+//@Throws(SCMSecurityException::class)
+//fun getPEMEncodedString(certificate: X509Certificate): String? {
+//    return try {
+//        val stringWriter = StringWriter()
+//        JcaPEMWriter(stringWriter).use { pemWriter -> pemWriter.writeObject(certificate) }
+//        stringWriter.toString()
+//    } catch (e: IOException) {
+//        LOG.error(
+//            "Error in encoding certificate." + certificate
+//                .getSubjectDN().toString(), e
+//        )
+//        throw SCMSecurityException(
+//            "PEM Encoding failed for certificate." +
+//                    certificate.getSubjectDN().toString(), e
+//        )
+//    }
+//}
 
-    return@coroutineScope encryptRs.await()
-}
 
-private suspend fun decryptWithAndroidASymmetricKey(data: String, keyPair: KeyPair): String = coroutineScope{
-    val decryptRs = async {
-        CipherWrapper(CipherWrapper.TRANSFORMATION_ASYMMETRIC).decrypt(
-            data,
-            keyPair.private,
-            true
-        )
-    }
-
-    return@coroutineScope decryptRs.await()
-}
+//private suspend fun encryptWithAndroidASymmetricKey(data: String, keyPair: KeyPair): String = coroutineScope {
+//    val encryptRs = async {
+//         CipherWrapper(CipherWrapper.TRANSFORMATION_ASYMMETRIC).encrypt(
+//            data,
+//            keyPair.private,
+//            true
+//        )
+//    }
+//
+//    return@coroutineScope encryptRs.await()
+//}
+//
+//private suspend fun decryptWithAndroidASymmetricKey(data: String, keyPair: KeyPair): String = coroutineScope{
+//    val decryptRs = async {
+//        CipherWrapper(CipherWrapper.TRANSFORMATION_ASYMMETRIC).decrypt(
+//            data,
+//            keyPair.private,
+//            true
+//        )
+//    }
+//
+//    return@coroutineScope decryptRs.await()
+//}
 
 fun createAsymmetricKeyPair(): KeyPair {
     val generator: KeyPairGenerator
