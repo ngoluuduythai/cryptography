@@ -1,5 +1,6 @@
 package com.example.crypto
 
+import android.graphics.Bitmap
 import android.os.Build
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
@@ -11,8 +12,11 @@ import java.security.PrivateKey
 import java.security.interfaces.RSAPublicKey
 import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 
-fun main() {
+
+suspend fun main() {
     val keyPair = createAsymmetricKeyPair()
 //    println("skey:  ${keyPair.private}")
 //    println("skey:  ${keyPair.public.encoded}")
@@ -29,12 +33,41 @@ fun main() {
     println("module>>> toBigDecimal ${module.toBigDecimal()}")
     println("exponent>>> toBigDecimal ${exponent.toBigDecimal()}")
 
-    val rasKeyPair = RSAKeyPairGenerator(1024)
-    println("rasKeyPair>>>  ${rasKeyPair.invoke().public.value.asSequence()}")
-    println("rasKeyPair>>>  ${rasKeyPair.invoke().private.value}")
+//    val rasKeyPair = RSAKeyPairGenerator(1024)
+//    println("rasKeyPair>>>  ${rasKeyPair.invoke().public.value.asSequence()}")
+//    println("rasKeyPair>>>  ${rasKeyPair.invoke().private.value}")
+
+    val encrypt = encryptWithAndroidASymmetricKey("thai ngo", keyPair)
+    println("encrypt>>>  $encrypt")
+    val decrypt = decryptWithAndroidASymmetricKey(encrypt, keyPair)
+    println("decrypt>>>  $decrypt")
 
 }
 
+
+private suspend fun encryptWithAndroidASymmetricKey(data: String, keyPair: KeyPair): String = coroutineScope {
+    val encryptRs = async {
+         CipherWrapper(CipherWrapper.TRANSFORMATION_ASYMMETRIC).encrypt(
+            data,
+            keyPair.private,
+            true
+        )
+    }
+
+    return@coroutineScope encryptRs.await()
+}
+
+private suspend fun decryptWithAndroidASymmetricKey(data: String, keyPair: KeyPair): String = coroutineScope{
+    val decryptRs = async {
+        CipherWrapper(CipherWrapper.TRANSFORMATION_ASYMMETRIC).decrypt(
+            data,
+            keyPair.private,
+            true
+        )
+    }
+
+    return@coroutineScope decryptRs.await()
+}
 
 fun createAsymmetricKeyPair(): KeyPair {
     val generator: KeyPairGenerator

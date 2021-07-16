@@ -6,7 +6,6 @@ import android.os.Build
 import android.security.KeyPairGeneratorSpec
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
-import androidx.annotation.RequiresApi
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
@@ -20,14 +19,11 @@ import javax.security.auth.x500.X500Principal
 /**
  * This class wraps [KeyStore] class apis with some additional possibilities.
  */
-class KeyStoreWrapper(private val context: Context) {
-    companion object {
-        private const val DEFAULT_KEYSTORE_NAME = "pin_keystore"
-    }
+class KeyStoreWrapper(private val context: Context, defaultKeyStoreName: String) {
 
     private val keyStore: KeyStore = createAndroidKeyStore()
 
-    private val defaultKeyStoreFile = File(context.filesDir, DEFAULT_KEYSTORE_NAME)
+    private val defaultKeyStoreFile = File(context.filesDir, defaultKeyStoreName)
     private val defaultKeyStore = createDefaultKeyStore()
 
     /**
@@ -65,16 +61,6 @@ class KeyStoreWrapper(private val context: Context) {
      */
     fun removeAndroidKeyStoreKey(alias: String) = keyStore.deleteEntry(alias)
 
-    /**
-     * Clears all aliases in the Android Key Store
-     */
-    fun clear() {
-        val aliases = keyStore.aliases()
-        aliases.iterator().forEach {
-            keyStore.deleteEntry(it)
-        }
-    }
-
     fun createDefaultKeyStoreSymmetricKey(alias: String, password: String) {
         val key = generateDefaultSymmetricKey()
         val keyEntry = KeyStore.SecretKeyEntry(key)
@@ -87,7 +73,7 @@ class KeyStoreWrapper(private val context: Context) {
      * Generates symmetric [KeyProperties.KEY_ALGORITHM_AES] key with default [KeyProperties.BLOCK_MODE_CBC] and
      * [KeyProperties.ENCRYPTION_PADDING_PKCS7] using default provider.
      */
-    private fun generateDefaultSymmetricKey(): SecretKey {
+    fun generateDefaultSymmetricKey(): SecretKey {
         val keyGenerator = KeyGenerator.getInstance("AES")
         return keyGenerator.generateKey()
     }
@@ -125,11 +111,11 @@ class KeyStoreWrapper(private val context: Context) {
      * Creates asymmetric RSA key with default [KeyProperties.BLOCK_MODE_ECB] and
      * [KeyProperties.ENCRYPTION_PADDING_RSA_PKCS1] and saves it to Android Key Store.
      */
-    @RequiresApi(Build.VERSION_CODES.JELLY_BEAN_MR2)
+    @TargetApi(Build.VERSION_CODES.M)
     fun createAndroidKeyStoreAsymmetricKey(alias: String): KeyPair {
         val generator = KeyPairGenerator.getInstance("RSA", "AndroidKeyStore")
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+        if (SystemServices.hasMarshmallow()) {
             initGeneratorWithKeyGenParameterSpec(generator, alias)
         } else {
             initGeneratorWithKeyPairGeneratorSpec(generator, alias)
@@ -138,7 +124,6 @@ class KeyStoreWrapper(private val context: Context) {
         return generator.generateKeyPair()
     }
 
-    @RequiresApi(Build.VERSION_CODES.JELLY_BEAN_MR2)
     private fun initGeneratorWithKeyPairGeneratorSpec(generator: KeyPairGenerator, alias: String) {
         val startDate = Calendar.getInstance()
         val endDate = Calendar.getInstance()
@@ -147,7 +132,7 @@ class KeyStoreWrapper(private val context: Context) {
         val builder = KeyPairGeneratorSpec.Builder(context)
             .setAlias(alias)
             .setSerialNumber(BigInteger.ONE)
-            .setSubject(X500Principal("CN=$alias CA Certificate"))
+            .setSubject(X500Principal("CN=${alias} CA Certificate"))
             .setStartDate(startDate.time)
             .setEndDate(endDate.time)
 
@@ -180,3 +165,4 @@ class KeyStoreWrapper(private val context: Context) {
     }
 
 }
+

@@ -7,6 +7,10 @@ import android.security.keystore.KeyProperties
 import android.util.Base64.encode
 import androidx.appcompat.app.AppCompatActivity
 import com.example.crypto.crypt.rsa.RSAKeyPairGenerator
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 
 import java.security.KeyPair
 import java.security.KeyPairGenerator
@@ -22,18 +26,27 @@ class MainActivity : AppCompatActivity() {
         val keyPair = createAsymmetricKeyPair()
         println("skey:  ${keyPair.private}")
 
+            val encrypt = encryptWithAndroidASymmetricKey("thai ngo", keyPair)
+            println("encrypt>>>  $encrypt")
+            val decrypt = decryptWithAndroidASymmetricKey(encrypt, keyPair)
+            println("decrypt>>>  $decrypt")
+    }
 
-//        val key = ECKeys()
-//        key.genRSAKeyPair(object : ECRSAKeyPairListener{
-//            override fun onFailure(message: String, e: Exception) {
-//                TODO("Not yet implemented")
-//            }
-//
-//            override fun onGenerated(keyPair: KeyPair) {
-//                println("skey:  ${keyPair.private}")
-//                println("skey:  ${keyPair.public}")            }
-//
-//        })
+    private  fun encryptWithAndroidASymmetricKey(data: String, keyPair: KeyPair): String  {
+         return   CipherWrapper(CipherWrapper.TRANSFORMATION_ASYMMETRIC).encrypt(
+                data,
+                keyPair.private,
+                true
+            )
+    }
+
+    private  fun decryptWithAndroidASymmetricKey(data: String, keyPair: KeyPair): String {
+
+         return   CipherWrapper(CipherWrapper.TRANSFORMATION_ASYMMETRIC).decrypt(
+                data,
+                keyPair.private,
+                true
+            )
     }
 
 
